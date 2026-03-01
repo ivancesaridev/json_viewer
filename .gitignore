@@ -1,0 +1,35 @@
+# Gradle
+.gradle/
+build/
+
+# Android
+local.properties
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+app/build/
+composeApp/build/
+
+# iOS
+.DS_Store
+*.swp
+*.lock
+iosApp/Build/
+iosApp/*.xcodeproj/xcuserdata/
+iosApp/*.xcworkspace/xcuserdata/
+iosApp/DerivedData/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# Kotlin
+.kotlin/
+kotlin-js-store/
+
+# Local configuration
+.env

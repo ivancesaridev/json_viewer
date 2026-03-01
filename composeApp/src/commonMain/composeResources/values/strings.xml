@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JSON Viewer</string>
+
+    <!-- Home Screen - Open File Card -->
+    <string name="open_file_title">Open a File</string>
+    <string name="open_file_description">Browse your device storage to read, validate, and visualize JSON data instantly.</string>
+    <string name="browse_storage">Browse Storage</string>
+
+    <!-- Home Screen - Recent Files -->
+    <string name="recent_files">Recent Files</string>
+    <string name="no_recent_files">No recent files</string>
+
+    <!-- File size units -->
+    <string name="file_size_bytes">%d B</string>
+    <string name="file_size_kb">%s KB</string>
+    <string name="file_size_mb">%s MB</string>
+    <string name="file_size_gb">%s GB</string>
+
+    <!-- Relative time -->
+    <string name="time_just_now">Opened just now</string>
+    <string name="time_minutes_ago">%d minutes ago</string>
+    <string name="time_hours_ago">%d hours ago</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="time_days_ago">%d days ago</string>
+    <string name="time_last_week">Last week</string>
+    <string name="time_weeks_ago">%d weeks ago</string>
+</resources>
