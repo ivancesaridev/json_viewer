@@ -3,6 +3,8 @@ package org.ivancesari.jsonreader.util
 import android.net.Uri
 import org.ivancesari.jsonreader.util.ContextProvider
 
+private const val TAG = "FileContentReader"
+
 actual fun readFileContent(path: String): String? {
     return try {
         val uri = Uri.parse(path)
@@ -11,7 +13,7 @@ actual fun readFileContent(path: String): String? {
             inputStream.bufferedReader().use { it.readText() }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e(TAG, "Error reading file content", e)
         null
     }
 }

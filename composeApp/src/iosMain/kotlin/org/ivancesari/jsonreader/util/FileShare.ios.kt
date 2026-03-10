@@ -26,6 +26,6 @@ actual fun shareFile(path: String) {
         
         rootViewController?.presentViewController(activityViewController, animated = true, completion = null)
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e("FileShare", "Error sharing file", e)
     }
 }

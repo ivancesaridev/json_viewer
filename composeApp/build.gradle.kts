@@ -78,6 +78,10 @@ android {
         versionName = "1.0.0"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

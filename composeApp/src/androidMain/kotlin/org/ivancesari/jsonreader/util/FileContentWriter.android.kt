@@ -3,6 +3,8 @@ package org.ivancesari.jsonreader.util
 import android.net.Uri
 import org.ivancesari.jsonreader.util.ContextProvider
 
+private const val TAG = "FileContentWriter"
+
 actual fun saveFileContent(path: String, content: String): Boolean {
     return try {
         val uri = Uri.parse(path)
@@ -12,7 +14,7 @@ actual fun saveFileContent(path: String, content: String): Boolean {
         }
         true
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e(TAG, "Error saving file content", e)
         false
     }
 }

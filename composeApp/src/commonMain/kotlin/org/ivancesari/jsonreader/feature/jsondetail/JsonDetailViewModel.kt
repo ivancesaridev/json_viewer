@@ -56,7 +56,6 @@ class JsonDetailViewModel : ViewModel() {
                     expandedPaths = setOf("root") // start with root expanded
                 )
             } catch (e: Exception) {
-                e.printStackTrace()
                 _uiState.value = JsonDetailState.Error(e.message ?: "Unknown error parsing JSON")
             }
         }

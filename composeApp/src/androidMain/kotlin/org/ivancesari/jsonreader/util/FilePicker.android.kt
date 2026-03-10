@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import android.content.Intent
 
+private const val TAG = "FilePicker"
+
 @Composable
 actual fun rememberFilePicker(onFilePicked: (PickedFile?) -> Unit): () -> Unit {
     val context = LocalContext.current
@@ -35,7 +37,7 @@ actual fun rememberFilePicker(onFilePicked: (PickedFile?) -> Unit): () -> Unit {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            Logger.e(TAG, "Error taking persistable URI permission", e)
         }
 
         val fileInfo = resolveJsonFileInfo(uri.toString())
