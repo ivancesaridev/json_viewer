@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.ivancesari.jsonreader.util.Logger
 import org.ivancesari.jsonreader.util.readFileContent
 
 sealed class JsonDetailState {
@@ -56,6 +57,7 @@ class JsonDetailViewModel : ViewModel() {
                     expandedPaths = setOf("root") // start with root expanded
                 )
             } catch (e: Exception) {
+                Logger.e("JsonDetailViewModel", "Error loading or parsing JSON", e)
                 _uiState.value = JsonDetailState.Error(e.message ?: "Unknown error parsing JSON")
             }
         }
