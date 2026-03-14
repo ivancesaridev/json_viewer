@@ -17,7 +17,7 @@ actual fun saveFileContent(path: String, content: String): Boolean {
             error = null
         )
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e("FileContentWriter", "Error saving file content", e)
         false
     }
 }

@@ -3,6 +3,8 @@ package org.ivancesari.jsonreader.util
 import android.content.Intent
 import android.net.Uri
 
+private const val TAG = "FileShare"
+
 actual fun shareFile(path: String) {
     val context = ContextProvider.context ?: return
     try {
@@ -16,6 +18,6 @@ actual fun shareFile(path: String) {
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e(TAG, "Error sharing file", e)
     }
 }

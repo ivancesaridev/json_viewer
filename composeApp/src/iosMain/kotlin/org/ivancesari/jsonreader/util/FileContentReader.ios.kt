@@ -22,7 +22,7 @@ actual fun readFileContent(path: String): String? {
         )
         nsString
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e("FileContentReader", "Error reading file content", e)
         null
     }
 }

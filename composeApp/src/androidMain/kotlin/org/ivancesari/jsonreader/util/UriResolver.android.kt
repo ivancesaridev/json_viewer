@@ -4,6 +4,8 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import org.ivancesari.jsonreader.model.JsonFileInfo
 
+private const val TAG = "UriResolver"
+
 actual fun resolveJsonFileInfo(path: String): JsonFileInfo? {
     val context = ContextProvider.context ?: return null
     val uri = try { Uri.parse(path) } catch (e: Exception) { return null }
@@ -29,7 +31,7 @@ actual fun resolveJsonFileInfo(path: String): JsonFileInfo? {
             }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Logger.e(TAG, "Error resolving JSON file info", e)
     }
 
     return JsonFileInfo(
