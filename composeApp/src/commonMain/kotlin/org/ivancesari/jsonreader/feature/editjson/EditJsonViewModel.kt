@@ -33,6 +33,15 @@ class EditJsonViewModel : ViewModel() {
 
     fun loadFile(filePath: String, fileName: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            if (filePath.isEmpty()) {
+                _uiState.value = EditJsonState.Success(
+                    fileName = fileName,
+                    filePath = "",
+                    textFieldValue = TextFieldValue("{\n  \n}")
+                )
+                return@launch
+            }
+
             try {
                 _uiState.value = EditJsonState.Loading
                 val content = readFileContent(filePath)
@@ -209,13 +218,16 @@ class EditJsonViewModel : ViewModel() {
         onValueChange(textFieldValue)
     }
 
-    fun saveFile() {
+    fun saveFile(newFilePath: String? = null) {
         val currentState = _uiState.value
         if (currentState !is EditJsonState.Success) return
 
+        val pathToSave = newFilePath ?: currentState.filePath
+        if (pathToSave.isEmpty()) return
+
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { currentState.copy(isSaving = true) }
-            val success = saveFileContent(currentState.filePath, currentState.textFieldValue.text)
+            val success = saveFileContent(pathToSave, currentState.textFieldValue.text)
             _uiState.update { currentState.copy(isSaving = false, saveSuccess = success) }
         }
     }

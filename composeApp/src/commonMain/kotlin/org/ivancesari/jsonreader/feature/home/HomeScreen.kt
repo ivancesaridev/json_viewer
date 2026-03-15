@@ -26,6 +26,11 @@ import org.ivancesari.jsonreader.resources.recent_files
 import org.ivancesari.jsonreader.theme.JsonReaderTheme
 import org.ivancesari.jsonreader.ui.components.OpenFileCard
 import org.ivancesari.jsonreader.ui.components.RecentFileItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Scaffold
 import org.ivancesari.jsonreader.ui.components.TopBar
 import org.ivancesari.jsonreader.util.currentTimeMillis
 import org.ivancesari.jsonreader.util.rememberFilePicker
@@ -36,6 +41,7 @@ fun HomeScreen(
     uiState: HomeUiState,
     onFilePicked: (JsonFileInfo) -> Unit,
     onFileSelected: (JsonFileInfo) -> Unit,
+    onNewFileSelected: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val spacing = JsonReaderTheme.spacing
@@ -53,14 +59,24 @@ fun HomeScreen(
         }
     }
 
-    LazyColumn(
+    Scaffold(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding(),
-        contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm)
-    ) {
+        floatingActionButton = {
+            FloatingActionButton(onClick = onNewFileSelected) {
+                Icon(Icons.Filled.Add, contentDescription = "New JSON")
+            }
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm)
+        ) {
         item {
             TopBar()
         }
@@ -100,14 +116,15 @@ fun HomeScreen(
             }
         }
 
-        items(
-            items = uiState.recentFiles,
-            key = { it.path }
-        ) { file ->
-            RecentFileItem(
-                file = file,
-                onClick = { onFileSelected(file) }
-            )
+            items(
+                items = uiState.recentFiles,
+                key = { it.path }
+            ) { file ->
+                RecentFileItem(
+                    file = file,
+                    onClick = { onFileSelected(file) }
+                )
+            }
         }
     }
 }

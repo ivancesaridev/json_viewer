@@ -45,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import org.ivancesari.jsonreader.resources.Res
 import org.ivancesari.jsonreader.resources.ic_arrow_back
 import org.jetbrains.compose.resources.vectorResource
+import org.ivancesari.jsonreader.util.rememberFileCreator
 
 @Composable
 fun EditJsonScreen(
@@ -55,6 +56,12 @@ fun EditJsonScreen(
 ) {
     val viewModel: EditJsonViewModel = viewModel { EditJsonViewModel() }
     val uiState by viewModel.uiState.collectAsState()
+
+    val fileCreator = rememberFileCreator { pickedFile ->
+        pickedFile?.let {
+            viewModel.saveFile(it.path)
+        }
+    }
 
     LaunchedEffect(filePath) {
         viewModel.loadFile(filePath, fileName)
@@ -90,7 +97,13 @@ fun EditJsonScreen(
                 EditHeader(
                     fileName = state.fileName,
                     onCancel = onNavigateBack,
-                    onSave = { viewModel.saveFile() },
+                    onSave = {
+                        if (state.filePath.isEmpty()) {
+                            fileCreator(state.fileName)
+                        } else {
+                            viewModel.saveFile()
+                        }
+                    },
                     isSaving = state.isSaving
                 )
 
