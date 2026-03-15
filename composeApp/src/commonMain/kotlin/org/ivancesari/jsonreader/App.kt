@@ -80,6 +80,9 @@ fun App(
                             fileName = file.name,
                             fileSize = file.sizeInBytes
                         ))
+                    },
+                    onNewFileSelected = {
+                        navController.navigate(EditJson(filePath = "".encodeForRoute(), fileName = "New JSON"))
                     }
                 )
             }
