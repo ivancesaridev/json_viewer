@@ -65,7 +65,11 @@ fun HomeScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
         floatingActionButton = {
-            FloatingActionButton(onClick = onNewFileSelected) {
+            FloatingActionButton(
+                onClick = onNewFileSelected,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "New JSON")
             }
         }
