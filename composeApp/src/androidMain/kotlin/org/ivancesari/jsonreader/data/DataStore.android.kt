@@ -1,21 +1,23 @@
 package org.ivancesari.jsonreader.data
 
-import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import okio.Path.Companion.toPath
 import org.ivancesari.jsonreader.util.ContextProvider
 
-private lateinit var dataStore: DataStore<Preferences>
+private const val STORE_FILE_NAME = "recent_files.preferences_pb"
 
-actual fun createDataStore(): DataStore<Preferences> {
-    if (!::dataStore.isInitialized) {
-        val context = ContextProvider.context ?: throw IllegalStateException("Context not initialized")
-        dataStore = PreferenceDataStoreFactory.createWithPath(
-            produceFile = { context.filesDir.resolve("recent_files.preferences_pb").absolutePath.toPath() }
-        )
-    }
-    return dataStore
+/**
+ * Created once per process. DataStore throws if two instances are opened over the same file, so the
+ * instance is built lazily and the lazy itself guards against a race between callers.
+ */
+private val dataStore: DataStore<Preferences> by lazy {
+    PreferenceDataStoreFactory.createWithPath(
+        produceFile = {
+            ContextProvider.requireContext().filesDir.resolve(STORE_FILE_NAME).absolutePath.toPath()
+        }
+    )
 }
+
+actual fun createDataStore(): DataStore<Preferences> = dataStore

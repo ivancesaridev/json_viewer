@@ -18,25 +18,34 @@ data class JsonFileInfo(
         private const val MILLIS_PER_HOUR = 3_600_000L
         private const val MILLIS_PER_DAY = 86_400_000L
         private const val MILLIS_PER_WEEK = 604_800_000L
-    }
 
-    fun formattedSize(): Pair<String, FileSizeUnit> {
-        return when {
-            sizeInBytes < BYTES_PER_KB -> Pair(sizeInBytes.toString(), FileSizeUnit.BYTES)
-            sizeInBytes < BYTES_PER_MB -> {
-                val kb = sizeInBytes.toDouble() / BYTES_PER_KB
-                Pair(formatDecimal(kb), FileSizeUnit.KB)
+        /**
+         * Splits a byte count into a display value and its unit.
+         *
+         * Exposed on the companion so callers that only have a raw size — the "file too large"
+         * message, for instance — can format it the same way as a file entry.
+         */
+        fun formatSize(bytes: Long): Pair<String, FileSizeUnit> {
+            val safeBytes = bytes.coerceAtLeast(0L)
+            return when {
+                safeBytes < BYTES_PER_KB -> Pair(safeBytes.toString(), FileSizeUnit.BYTES)
+                safeBytes < BYTES_PER_MB -> Pair(formatDecimal(safeBytes.toDouble() / BYTES_PER_KB), FileSizeUnit.KB)
+                safeBytes < BYTES_PER_GB -> Pair(formatDecimal(safeBytes.toDouble() / BYTES_PER_MB), FileSizeUnit.MB)
+                else -> Pair(formatDecimal(safeBytes.toDouble() / BYTES_PER_GB), FileSizeUnit.GB)
             }
-            sizeInBytes < BYTES_PER_GB -> {
-                val mb = sizeInBytes.toDouble() / BYTES_PER_MB
-                Pair(formatDecimal(mb), FileSizeUnit.MB)
-            }
-            else -> {
-                val gb = sizeInBytes.toDouble() / BYTES_PER_GB
-                Pair(formatDecimal(gb), FileSizeUnit.GB)
+        }
+
+        private fun formatDecimal(value: Double): String {
+            val rounded = (kotlin.math.round(value * 10)) / 10.0
+            return if (rounded == rounded.toLong().toDouble()) {
+                rounded.toLong().toString()
+            } else {
+                rounded.toString()
             }
         }
     }
+
+    fun formattedSize(): Pair<String, FileSizeUnit> = formatSize(sizeInBytes)
 
     fun relativeTime(currentTimeMillis: Long): RelativeTimeResult {
         val diff = currentTimeMillis - lastOpenedTimestamp
@@ -63,14 +72,6 @@ data class JsonFileInfo(
         }
     }
 
-    private fun formatDecimal(value: Double): String {
-        val rounded = (kotlin.math.round(value * 10)) / 10.0
-        return if (rounded == rounded.toLong().toDouble()) {
-            rounded.toLong().toString()
-        } else {
-            rounded.toString()
-        }
-    }
 }
 
 enum class FileSizeUnit { BYTES, KB, MB, GB }

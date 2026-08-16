@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,18 +22,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.ivancesari.jsonreader.model.JsonFileInfo
 import org.ivancesari.jsonreader.resources.Res
-import org.ivancesari.jsonreader.resources.ic_arrow_right
 import org.ivancesari.jsonreader.resources.ic_code
+import org.ivancesari.jsonreader.resources.remove_from_recent
 import org.ivancesari.jsonreader.theme.JsonReaderTheme
+import org.ivancesari.jsonreader.ui.format.formatFileSize
+import org.ivancesari.jsonreader.ui.format.formatRelativeTime
+import org.ivancesari.jsonreader.util.currentTimeMillis
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 
 @Composable
 fun RecentFileItem(
     file: JsonFileInfo,
     onClick: () -> Unit,
+    onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val spacing = JsonReaderTheme.spacing
@@ -40,13 +49,12 @@ fun RecentFileItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(spacing.md))
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon Badge
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -66,21 +74,33 @@ fun RecentFileItem(
 
             Spacer(modifier = Modifier.width(spacing.md))
 
-            Text(
-                text = file.name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    // Both halves were previously unused on this row even though the model already
+                    // computed them, so the list showed nothing but a file name.
+                    text = "${formatFileSize(file.sizeInBytes)} · ${formatRelativeTime(file, currentTimeMillis())}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
-            Spacer(modifier = Modifier.width(spacing.sm))
-
-            Icon(
-                imageVector = vectorResource(Res.drawable.ic_arrow_right),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.remove_from_recent),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

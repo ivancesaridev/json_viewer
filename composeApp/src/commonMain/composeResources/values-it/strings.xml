@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JSON Viewer</string>
+
+    <!-- Home Screen - Open File Card -->
+    <string name="open_file_title">Apri un file</string>
+    <string name="open_file_description">Sfoglia la memoria del dispositivo per leggere, validare e visualizzare dati JSON all\'istante.</string>
+    <string name="browse_storage">Sfoglia i file</string>
+
+    <!-- Home Screen - Recent Files -->
+    <string name="recent_files">File recenti</string>
+    <string name="no_recent_files">Nessun file recente</string>
+    <string name="remove_from_recent">Rimuovi dai file recenti</string>
+    <string name="new_json_file">Nuovo file JSON</string>
+    <string name="new_file_name">senza-titolo.json</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Indietro</string>
+    <string name="action_copy">Copia JSON</string>
+    <string name="action_edit">Modifica JSON</string>
+    <string name="action_share">Condividi</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_save">Salva</string>
+    <string name="action_search">Cerca</string>
+    <string name="action_clear_search">Cancella la ricerca</string>
+    <string name="action_close">Chiudi</string>
+    <string name="action_expand">Espandi</string>
+    <string name="action_collapse">Comprimi</string>
+    <string name="action_indent">Rientro</string>
+    <string name="action_delete_character">Cancella carattere</string>
+    <string name="action_previous_match">Risultato precedente</string>
+    <string name="action_next_match">Risultato successivo</string>
+
+    <!-- Confirmations -->
+    <string name="copied_to_clipboard">JSON copiato negli appunti</string>
+    <string name="unsaved_changes_title">Vuoi scartare le modifiche?</string>
+    <string name="unsaved_changes_message">Questo file contiene modifiche non ancora salvate.</string>
+    <string name="unsaved_changes_discard">Scarta</string>
+    <string name="unsaved_changes_keep">Continua a modificare</string>
+
+    <!-- Errors -->
+    <string name="error_unable_to_read">Impossibile aprire il file. Potrebbe essere stato spostato o eliminato, oppure l\'app che lo ha condiviso non ne ha più il permesso.</string>
+    <string name="error_file_too_large">Il file è troppo grande. JSON Viewer apre file fino a %1$s.</string>
+    <string name="error_invalid_json">Il file non è JSON valido, quindi non può essere mostrato come albero. Puoi comunque aprirlo nell\'editor per correggerlo.</string>
+    <string name="error_invalid_json_detail">Problema rilevato: %1$s</string>
+    <string name="error_save_failed">Salvataggio non riuscito. Il file potrebbe essere di sola lettura, oppure l\'app che lo ha condiviso ha revocato il permesso di scrittura.</string>
+    <string name="error_share_failed">Impossibile aprire il pannello di condivisione per questo file.</string>
+    <string name="error_open_from_other_app">JSON Viewer non è riuscito ad aprire il file selezionato. Riprova ad aprirlo dal gestore file.</string>
+    <string name="error_invalid_json_on_save">Non è ancora JSON valido: %1$s</string>
+    <string name="save_anyway">Salva comunque</string>
+    <string name="fix_it">Correggi</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Cerca tra chiavi e valori</string>
+    <string name="search_no_results">Nessun risultato</string>
+    <string name="search_match_position">%1$d di %2$d</string>
+
+    <!-- Tree viewer -->
+    <string name="json_object_summary">Oggetto (%1$d)</string>
+    <string name="json_array_summary">Array (%1$d)</string>
+
+    <!-- File size units -->
+    <string name="file_size_bytes">%1$s B</string>
+    <string name="file_size_kb">%1$s KB</string>
+    <string name="file_size_mb">%1$s MB</string>
+    <string name="file_size_gb">%1$s GB</string>
+
+    <!-- Relative time -->
+    <string name="time_just_now">Aperto ora</string>
+    <string name="time_minutes_ago">%1$d minuti fa</string>
+    <string name="time_hours_ago">%1$d ore fa</string>
+    <string name="time_yesterday">Ieri</string>
+    <string name="time_days_ago">%1$d giorni fa</string>
+    <string name="time_last_week">La settimana scorsa</string>
+    <string name="time_weeks_ago">%1$d settimane fa</string>
+</resources>

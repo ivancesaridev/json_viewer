@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.ivancesari.jsonreader.resources.Res
+import org.ivancesari.jsonreader.resources.browse_storage
 import org.ivancesari.jsonreader.resources.ic_folder
 import org.ivancesari.jsonreader.resources.open_file_description
 import org.ivancesari.jsonreader.resources.open_file_title
@@ -78,7 +79,7 @@ fun OpenFileCard(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Browse Storage",
+                text = stringResource(Res.string.browse_storage),
                 style = MaterialTheme.typography.labelLarge
             )
         }

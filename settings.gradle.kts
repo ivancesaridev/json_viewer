@@ -1,7 +1,4 @@
-rootProject.name = "JsonReader"
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-
+// pluginManagement has to come before anything else in a settings script.
 pluginManagement {
     repositories {
         google()
@@ -16,5 +13,9 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+rootProject.name = "JsonReader"
 
 include(":composeApp")

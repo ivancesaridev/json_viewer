@@ -13,6 +13,15 @@ out/
 app/build/
 composeApp/build/
 
+# Signing material — never commit these
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+
 # iOS
 .DS_Store
 *.swp

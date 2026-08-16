@@ -2,233 +2,212 @@ package org.ivancesari.jsonreader.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import org.ivancesari.jsonreader.json.JsonTreeRow
 import org.ivancesari.jsonreader.resources.Res
+import org.ivancesari.jsonreader.resources.action_collapse
+import org.ivancesari.jsonreader.resources.action_expand
 import org.ivancesari.jsonreader.resources.ic_arrow_down
 import org.ivancesari.jsonreader.resources.ic_arrow_right
+import org.ivancesari.jsonreader.resources.json_array_summary
+import org.ivancesari.jsonreader.resources.json_object_summary
 import org.ivancesari.jsonreader.theme.LocalSyntaxColors
 import org.ivancesari.jsonreader.theme.SyntaxColorPalette
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 
+private val INDENT_PER_DEPTH = 16.dp
+private val GUTTER_WIDTH = 28.dp
+private val MONOSPACE_SIZE = 14.sp
+
+/**
+ * Renders a flattened JSON document.
+ *
+ * [rows] arrives pre-computed from the view model, so expanding a large branch does not run a tree
+ * walk on the frame that handles the tap, and the list itself can stay lazy: only the lines on
+ * screen are composed.
+ */
 @Composable
 fun JsonTreeViewer(
-    jsonElement: JsonElement,
-    expandedPaths: Set<String>,
+    rows: List<JsonTreeRow>,
     onToggleNode: (String) -> Unit,
     modifier: Modifier = Modifier,
-    searchQuery: String = ""
+    listState: LazyListState = rememberLazyListState(),
+    matchedPaths: Set<String> = emptySet(),
+    focusedPath: String? = null,
+    contentPadding: PaddingValues = PaddingValues(16.dp)
 ) {
     val syntaxColors = LocalSyntaxColors.current
-    Column(
+
+    LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
-            .padding(16.dp)
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
+        contentPadding = contentPadding
     ) {
-        JsonNode(
-            key = null,
-            element = jsonElement,
-            path = "root",
-            expandedPaths = expandedPaths,
-            onToggleNode = onToggleNode,
-            depth = 0,
-            isLast = true,
-            syntaxColors = syntaxColors
+        items(
+            items = rows,
+            key = { it.id }
+        ) { row ->
+            JsonRow(
+                row = row,
+                syntaxColors = syntaxColors,
+                isMatch = row !is JsonTreeRow.Closing && row.path in matchedPaths,
+                isFocused = row !is JsonTreeRow.Closing && row.path == focusedPath,
+                onToggleNode = onToggleNode
+            )
+        }
+    }
+}
+
+@Composable
+private fun JsonRow(
+    row: JsonTreeRow,
+    syntaxColors: SyntaxColorPalette,
+    isMatch: Boolean,
+    isFocused: Boolean,
+    onToggleNode: (String) -> Unit
+) {
+    val expandable = row is JsonTreeRow.Branch && row.childCount > 0
+
+    val highlight = when {
+        isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+        isMatch -> MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+        else -> null
+    }
+
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier
+            .fillMaxWidth()
+            // The whole line toggles, not just the caret: a 28dp icon is well below the minimum
+            // comfortable touch target, and the line is the thing the user is aiming at anyway.
+            .then(if (expandable) Modifier.clickable { onToggleNode(row.path) } else Modifier)
+            .then(if (highlight != null) Modifier.background(highlight) else Modifier)
+            .padding(start = INDENT_PER_DEPTH * row.depth, top = 4.dp, bottom = 4.dp)
+    ) {
+        if (expandable) {
+            val branch = row as JsonTreeRow.Branch
+            Icon(
+                imageVector = vectorResource(
+                    if (branch.isExpanded) Res.drawable.ic_arrow_down else Res.drawable.ic_arrow_right
+                ),
+                contentDescription = stringResource(
+                    if (branch.isExpanded) Res.string.action_collapse else Res.string.action_expand
+                ),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(GUTTER_WIDTH)
+                    .padding(end = 4.dp, top = 2.dp)
+            )
+        } else {
+            Spacer(modifier = Modifier.width(GUTTER_WIDTH))
+        }
+
+        Text(
+            text = row.render(syntaxColors),
+            fontFamily = FontFamily.Monospace,
+            fontSize = MONOSPACE_SIZE,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
         )
     }
 }
 
 @Composable
-private fun JsonNode(
-    key: String?,
-    element: JsonElement,
-    path: String,
-    expandedPaths: Set<String>,
-    onToggleNode: (String) -> Unit,
-    depth: Int,
-    isLast: Boolean,
-    syntaxColors: SyntaxColorPalette
-) {
-    val paddingStart = (depth * 16).dp
-    val isExpanded = expandedPaths.contains(path)
+private fun JsonTreeRow.render(colors: SyntaxColorPalette): AnnotatedString {
+    val branch = this as? JsonTreeRow.Branch
+    val collapsedSummary = if (branch != null && branch.childCount > 0 && !branch.isExpanded) {
+        stringResource(
+            if (branch.isArray) Res.string.json_array_summary else Res.string.json_object_summary,
+            branch.childCount
+        )
+    } else {
+        null
+    }
 
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier.padding(start = paddingStart, top = 2.dp, bottom = 2.dp)
-    ) {
-        // Expand/Collapse Icon for objects/arrays
-        if (element is JsonObject || element is JsonArray) {
-            val hasChildren = when (element) {
-                is JsonObject -> element.isNotEmpty()
-                is JsonArray -> element.isNotEmpty()
-                else -> false
+    return buildAnnotatedString {
+        when (val row = this@render) {
+            is JsonTreeRow.Branch -> {
+                appendKey(row.key, row.isArrayIndex, colors)
+                val open = if (row.isArray) "[" else "{"
+                val close = if (row.isArray) "]" else "}"
+
+                when {
+                    row.childCount == 0 -> {
+                        punctuation(colors, "$open$close")
+                        if (!row.isLast) punctuation(colors, ",")
+                    }
+
+                    collapsedSummary != null -> {
+                        punctuation(colors, "$open ")
+                        withStyle(SpanStyle(color = colors.summary)) { append(collapsedSummary) }
+                        punctuation(colors, " $close")
+                        if (!row.isLast) punctuation(colors, ",")
+                    }
+
+                    else -> punctuation(colors, open)
+                }
             }
 
-            if (hasChildren) {
-                Icon(
-                    imageVector = vectorResource(if (isExpanded) Res.drawable.ic_arrow_down else Res.drawable.ic_arrow_right),
-                    contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(end = 4.dp, top = 4.dp)
-                        .clickable { onToggleNode(path) }
-                )
-            } else {
-                Spacer(modifier = Modifier.width(28.dp)) // Placeholder for no children
+            is JsonTreeRow.Closing -> {
+                val close = if (row.isArray) "]" else "}"
+                punctuation(colors, if (row.isLast) close else "$close,")
             }
-        } else {
-            Spacer(modifier = Modifier.width(28.dp)) // Indent primitives evenly
-        }
 
-        // Content
-        Column {
-            when (element) {
-                is JsonObject -> {
-                    val text = buildAnnotatedString {
-                        if (key != null) {
-                            withStyle(SpanStyle(color = syntaxColors.key)) { append("\"$key\"") }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(": ") }
-                        }
-                        if (element.isEmpty()) {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append("{}") }
-                            if (!isLast) withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(",") }
-                        } else if (!isExpanded) {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append("{ ") }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation, background = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))) {
-                                append("Object (${element.size})") 
-                            }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(" }") }
-                            if (!isLast) withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(",") }
-                        } else {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append("{") }
-                        }
-                    }
-                    Text(text = text, fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                    
-                    if (isExpanded && element.isNotEmpty()) {
-                        val entries = element.entries.toList()
-                        entries.forEachIndexed { index, entry ->
-                            JsonNode(
-                                key = entry.key,
-                                element = entry.value,
-                                path = "$path.${entry.key}",
-                                expandedPaths = expandedPaths,
-                                onToggleNode = onToggleNode,
-                                depth = depth + 1,
-                                isLast = index == entries.lastIndex,
-                                syntaxColors = syntaxColors
-                            )
-                        }
-                        Text(
-                            text = if (isLast) "}" else "},",
-                            color = syntaxColors.punctuation,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(start = 0.dp) // Align closing brace
-                        )
-                    }
+            is JsonTreeRow.Leaf -> {
+                appendKey(row.key, row.isArrayIndex, colors)
+                val value = row.value
+                when {
+                    value is JsonNull -> withStyle(SpanStyle(color = colors.nullValue)) { append("null") }
+                    value.isString -> withStyle(SpanStyle(color = colors.string)) { append("\"${value.content}\"") }
+                    value.content == "true" || value.content == "false" ->
+                        withStyle(SpanStyle(color = colors.boolean)) { append(value.content) }
+                    else -> withStyle(SpanStyle(color = colors.number)) { append(value.content) }
                 }
-                is JsonArray -> {
-                    val text = buildAnnotatedString {
-                        if (key != null) {
-                            withStyle(SpanStyle(color = syntaxColors.key)) { append("\"$key\"") }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(": ") }
-                        }
-                        if (element.isEmpty()) {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append("[]") }
-                            if (!isLast) withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(",") }
-                        } else if (!isExpanded) {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append("[ ") }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation, background = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))) {
-                                append("Array (${element.size})") 
-                            }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(" ]") }
-                            if (!isLast) withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(",") }
-                        } else {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append("[") }
-                        }
-                    }
-                    Text(text = text, fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-
-                    if (isExpanded && element.isNotEmpty()) {
-                        element.forEachIndexed { index, childElement ->
-                            JsonNode(
-                                key = index.toString(), 
-                                element = childElement,
-                                path = "$path[$index]",
-                                expandedPaths = expandedPaths,
-                                onToggleNode = onToggleNode,
-                                depth = depth + 1,
-                                isLast = index == element.lastIndex,
-                                syntaxColors = syntaxColors
-                            )
-                        }
-                        Text(
-                            text = if (isLast) "]" else "],",
-                            color = syntaxColors.punctuation,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(start = 0.dp)
-                        )
-                    }
-                }
-                is JsonPrimitive -> {
-                    val text = buildAnnotatedString {
-                        if (key != null) {
-                            withStyle(SpanStyle(color = syntaxColors.key)) { 
-                                val keyStr = if (path.endsWith("]")) key else "\"$key\""
-                                append(keyStr) 
-                            }
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(": ") }
-                        }
-
-                        when {
-                            element is JsonNull -> {
-                                withStyle(SpanStyle(color = syntaxColors.nullValue)) { append("null") }
-                            }
-                            element.isString -> {
-                                withStyle(SpanStyle(color = syntaxColors.string)) { append("\"${element.content}\"") }
-                            }
-                            else -> {
-                                val contentStr = element.content
-                                val color = when (contentStr) {
-                                    "true", "false" -> syntaxColors.boolean
-                                    else -> syntaxColors.number
-                                }
-                                withStyle(SpanStyle(color = color)) { append(contentStr) }
-                            }
-                        }
-                        
-                        if (!isLast) {
-                            withStyle(SpanStyle(color = syntaxColors.punctuation)) { append(",") }
-                        }
-                    }
-                    Text(text = text, fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                }
+                if (!row.isLast) punctuation(colors, ",")
             }
         }
     }
+}
+
+private fun AnnotatedString.Builder.appendKey(
+    key: String?,
+    isArrayIndex: Boolean,
+    colors: SyntaxColorPalette
+) {
+    if (key == null) return
+    withStyle(SpanStyle(color = colors.key)) {
+        append(if (isArrayIndex) key else "\"$key\"")
+    }
+    punctuation(colors, ": ")
+}
+
+private fun AnnotatedString.Builder.punctuation(colors: SyntaxColorPalette, text: String) {
+    withStyle(SpanStyle(color = colors.punctuation)) { append(text) }
 }

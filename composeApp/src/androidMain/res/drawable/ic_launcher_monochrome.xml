@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome layer for themed icons (Android 13+).
+
+  Same brace glyph as the coloured foreground, drawn in solid white so the system can tint it with
+  the user's wallpaper palette. Coordinates match app_icon.svg's 512pt canvas; the glyph spans
+  roughly 272pt, which maps to ~57dp and stays inside the 72dp adaptive-icon safe zone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M220,140 L160,140 L160,240 L120,256 L160,272 L160,372 L220,372 L220,340 L190,340 L190,272 L170,256 L190,240 L190,172 L220,172 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M292,140 L352,140 L352,240 L392,256 L352,272 L352,372 L292,372 L292,340 L322,340 L322,272 L342,256 L322,240 L322,172 L292,172 Z" />
+</vector>

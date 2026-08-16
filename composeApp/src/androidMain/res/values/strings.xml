@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android platform strings. The in-app UI uses Compose Multiplatform resources
+      (commonMain/composeResources/values/strings.xml); this file only covers what the platform
+      itself reads, such as the launcher label and intent-filter labels.
+    -->
+    <string name="app_name">JSON Viewer</string>
+</resources>
