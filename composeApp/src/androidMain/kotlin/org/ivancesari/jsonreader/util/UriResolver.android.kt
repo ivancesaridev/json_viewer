@@ -8,34 +8,40 @@ private const val TAG = "UriResolver"
 
 actual fun resolveJsonFileInfo(path: String): JsonFileInfo? {
     val context = ContextProvider.context ?: return null
-    val uri = try { Uri.parse(path) } catch (e: Exception) { return null }
-    
-    var name = "unknown.json"
+    val uri = runCatching { Uri.parse(path) }.getOrNull() ?: return null
+
+    var name: String? = null
     var size = 0L
+    var reachable = false
 
     try {
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
+                reachable = true
                 val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
-                if (nameIdx >= 0) name = cursor.getString(nameIdx) ?: "unknown.json"
-                if (sizeIdx >= 0 && !cursor.isNull(sizeIdx)) {
-                    size = cursor.getLong(sizeIdx)
-                }
+                if (nameIdx >= 0 && !cursor.isNull(nameIdx)) name = cursor.getString(nameIdx)
+                if (sizeIdx >= 0 && !cursor.isNull(sizeIdx)) size = cursor.getLong(sizeIdx)
             }
         }
 
         if (size <= 0L) {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { fd ->
-                size = fd.statSize
+                reachable = true
+                size = fd.statSize.coerceAtLeast(0L)
             }
         }
     } catch (e: Exception) {
+        // A revoked permission, a deleted file or an unavailable provider all land here. Report the
+        // file as unresolvable rather than returning a placeholder the caller would treat as valid.
         Logger.e(TAG, "Error resolving JSON file info", e)
+        return null
     }
 
+    if (!reachable) return null
+
     return JsonFileInfo(
-        name = name,
+        name = name ?: uri.lastPathSegment?.substringAfterLast('/').orEmpty().ifBlank { "file.json" },
         sizeInBytes = size,
         lastOpenedTimestamp = currentTimeMillis(),
         path = path

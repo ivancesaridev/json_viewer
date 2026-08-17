@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.ivancesari.jsonreader.data.RecentFilesRepository
 import org.ivancesari.jsonreader.model.JsonFileInfo
-import org.ivancesari.jsonreader.util.currentTimeMillis
 
 class HomeViewModel(
     private val repository: RecentFilesRepository
@@ -21,28 +20,18 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        loadRecentFiles()
-    }
-
-    private fun loadRecentFiles() {
-        repository.recentFilesFlow.onEach { files ->
-            _uiState.update { it.copy(recentFiles = files) }
-        }.launchIn(viewModelScope)
-    }
-
-    fun onBrowseStorage() {
-        // Handled in the UI via FileKit picker
+        repository.recentFilesFlow
+            .onEach { files ->
+                _uiState.update { it.copy(recentFiles = files, isLoading = false) }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onFilePicked(file: JsonFileInfo) {
-        viewModelScope.launch {
-            val currentState = _uiState.value
-            val updatedList = (listOf(file) + currentState.recentFiles.filter { it.path != file.path }).take(10)
-            repository.saveRecentFiles(updatedList)
-        }
+        viewModelScope.launch { repository.addRecentFile(file) }
     }
 
-    fun onFileSelected(file: JsonFileInfo) {
-        // Will navigate to file viewer in a future iteration
+    fun onRemoveRecentFile(path: String) {
+        viewModelScope.launch { repository.removeRecentFile(path) }
     }
 }

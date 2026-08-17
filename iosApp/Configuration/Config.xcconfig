@@ -1,0 +1,9 @@
+// Shared build settings for the iOS app.
+//
+// TEAM_ID is intentionally empty in version control: set it locally, or override it in Xcode's
+// Signing & Capabilities pane. CI should inject it rather than committing a team identifier.
+APP_NAME = JSON Viewer
+BUNDLE_ID = org.ivancesari.jsonreader
+APP_VERSION = 1.0.0
+APP_BUILD = 1
+TEAM_ID =

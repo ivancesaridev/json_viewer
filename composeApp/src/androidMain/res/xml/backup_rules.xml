@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup rules for Android 11 and below.
+
+  The recent-files store holds content:// URIs together with the persisted read permissions granted
+  to *this* install. Restoring them onto another device produces a list of entries that can never be
+  opened, so the store is excluded from backup.
+-->
+<full-backup-content>
+    <exclude domain="file" path="recent_files.preferences_pb" />
+</full-backup-content>

@@ -11,19 +11,44 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import org.ivancesari.jsonreader.util.FileReadResult
 import org.ivancesari.jsonreader.util.readFileContent
 import org.ivancesari.jsonreader.util.saveFileContent
 
-sealed class EditJsonState {
-    object Loading : EditJsonState()
-    data class Error(val message: String) : EditJsonState()
+/** Starting content for a brand new document. */
+private const val NEW_DOCUMENT_TEMPLATE = "{\n  \n}"
+
+/** Why a file could not be opened in the editor. */
+sealed interface EditJsonError {
+    data object NotReadable : EditJsonError
+    data class TooLarge(val limitInBytes: Long) : EditJsonError
+}
+
+sealed interface EditJsonState {
+
+    data object Loading : EditJsonState
+
+    data class Error(val error: EditJsonError) : EditJsonState
+
     data class Success(
         val fileName: String,
         val filePath: String,
         val textFieldValue: TextFieldValue,
+        val originalText: String,
         val isSaving: Boolean = false,
-        val saveSuccess: Boolean? = null
-    ) : EditJsonState()
+        /** Set when the user tried to save content that is not valid JSON; holds the parser detail. */
+        val invalidJsonMessage: String? = null,
+        /** Set when the write itself failed, so the UI can tell the user instead of staying silent. */
+        val saveFailed: Boolean = false
+    ) : EditJsonState {
+
+        val isDirty: Boolean get() = textFieldValue.text != originalText
+
+        /** True for a document that has never been written to disk. */
+        val isNewDocument: Boolean get() = filePath.isEmpty()
+    }
 }
 
 class EditJsonViewModel : ViewModel() {
@@ -31,204 +56,147 @@ class EditJsonViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<EditJsonState>(EditJsonState.Loading)
     val uiState: StateFlow<EditJsonState> = _uiState.asStateFlow()
 
+    /** Emits once after a successful write so the screen can navigate away. */
+    private val _saved = MutableStateFlow(false)
+    val saved: StateFlow<Boolean> = _saved.asStateFlow()
+
+    private var loadedPath: String? = null
+
     fun loadFile(filePath: String, fileName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (filePath.isEmpty()) {
-                _uiState.value = EditJsonState.Success(
-                    fileName = fileName,
-                    filePath = "",
-                    textFieldValue = TextFieldValue("{\n  \n}")
-                )
-                return@launch
-            }
+        if (loadedPath == filePath && _uiState.value !is EditJsonState.Loading) return
+        loadedPath = filePath
 
-            try {
-                _uiState.value = EditJsonState.Loading
-                val content = readFileContent(filePath)
-                if (content == null) {
-                    _uiState.value = EditJsonState.Error("Unable to read file content")
-                    return@launch
-                }
+        if (filePath.isEmpty()) {
+            _uiState.value = EditJsonState.Success(
+                fileName = fileName,
+                filePath = "",
+                textFieldValue = TextFieldValue(NEW_DOCUMENT_TEMPLATE, TextRange(NEW_DOCUMENT_TEMPLATE.length - 2)),
+                originalText = NEW_DOCUMENT_TEMPLATE
+            )
+            return
+        }
 
-                _uiState.value = EditJsonState.Success(
-                    fileName = fileName,
-                    filePath = filePath,
-                    textFieldValue = TextFieldValue(content)
-                )
-            } catch (e: Exception) {
-                _uiState.value = EditJsonState.Error(e.message ?: "Unknown error")
+        viewModelScope.launch {
+            _uiState.value = EditJsonState.Loading
+
+            when (val result = withContext(Dispatchers.IO) { readFileContent(filePath) }) {
+                is FileReadResult.NotReadable ->
+                    _uiState.value = EditJsonState.Error(EditJsonError.NotReadable)
+
+                is FileReadResult.TooLarge ->
+                    _uiState.value = EditJsonState.Error(EditJsonError.TooLarge(result.limitInBytes))
+
+                is FileReadResult.Success ->
+                    _uiState.value = EditJsonState.Success(
+                        fileName = fileName,
+                        filePath = filePath,
+                        textFieldValue = TextFieldValue(result.content),
+                        originalText = result.content
+                    )
             }
         }
     }
 
     fun onValueChange(newValue: TextFieldValue) {
-        val currentState = _uiState.value
-        if (currentState !is EditJsonState.Success) return
+        val currentState = _uiState.value as? EditJsonState.Success ?: return
 
-        val oldValue = currentState.textFieldValue
-        val oldText = oldValue.text
-        val newText = newValue.text
-
-        // Detect if a character was just typed (text length increased by 1)
-        if (newText.length == oldText.length + 1) {
-            val cursorIndex = newValue.selection.start
-            val typedChar = newText[cursorIndex - 1]
-
-            when (typedChar) {
-                '\n' -> {
-                    // Smart Indentation on Enter
-                    val textBeforeCursor = newText.substring(0, cursorIndex - 1)
-                    val lastNewline = textBeforeCursor.lastIndexOf('\n')
-                    val lineStart = if (lastNewline == -1) 0 else lastNewline + 1
-                    val lineBefore = textBeforeCursor.substring(lineStart)
-                    
-                    val currentIndent = lineBefore.takeWhile { it.isWhitespace() }
-                    val lastChar = lineBefore.trim().lastOrNull()
-                    
-                    val extraIndent = if (lastChar == '{' || lastChar == '[') "  " else ""
-                    
-                    // If we are between { and }, or [ and ], add extra newline for the closing char
-                    val charAfterCursor = if (cursorIndex < newText.length) newText[cursorIndex] else null
-                    val isBetweenPairs = (lastChar == '{' && charAfterCursor == '}') || (lastChar == '[' && charAfterCursor == ']')
-                    
-                    val inserted = currentIndent + extraIndent
-                    val suffix = if (isBetweenPairs) "\n$currentIndent" else ""
-                    
-                    val updatedText = textBeforeCursor + "\n" + inserted + suffix + newText.substring(cursorIndex)
-                    val updatedSelection = TextRange(cursorIndex + inserted.length)
-                    
-                    _uiState.update { 
-                        currentState.copy(textFieldValue = TextFieldValue(updatedText, updatedSelection))
-                    }
-                    return
-                }
-                '{', '[' -> {
-                    // Auto-close braces/brackets
-                    val closing = if (typedChar == '{') "}" else "]"
-                    val updatedText = newText.substring(0, cursorIndex) + closing + newText.substring(cursorIndex)
-                    _uiState.update {
-                        currentState.copy(textFieldValue = TextFieldValue(updatedText, TextRange(cursorIndex)))
-                    }
-                    return
-                }
-                '}', ']' -> {
-                    val oldCursor = oldValue.selection.start
-                    val charAtOldCursor = if (oldCursor < oldText.length) oldText[oldCursor] else null
-                    
-                    // Skip if already present
-                    if (charAtOldCursor == typedChar) {
-                        _uiState.update {
-                            currentState.copy(textFieldValue = TextFieldValue(oldText, TextRange(oldCursor + 1)))
-                        }
-                        return
-                    }
-                    
-                    // Auto un-indent if typing closing brace on indented empty line
-                    val lastNewline = oldText.lastIndexOf('\n', oldCursor - 1)
-                    val lineStart = if (lastNewline == -1) 0 else lastNewline + 1
-                    val lineBefore = oldText.substring(lineStart, oldCursor)
-                    if (lineBefore.isNotEmpty() && lineBefore.all { it.isWhitespace() } && lineBefore.length >= 2) {
-                        val updatedText = oldText.substring(0, oldCursor - 2) + typedChar + oldText.substring(oldCursor)
-                        _uiState.update {
-                            currentState.copy(textFieldValue = TextFieldValue(updatedText, TextRange(oldCursor - 2 + 1)))
-                        }
-                        return
-                    }
-                }
-                '"' -> {
-                    val oldCursor = oldValue.selection.start
-                    val charAtOldCursor = if (oldCursor < oldText.length) oldText[oldCursor] else null
-                    
-                    // Skip if already present
-                    if (charAtOldCursor == typedChar) {
-                        _uiState.update {
-                            currentState.copy(textFieldValue = TextFieldValue(oldText, TextRange(oldCursor + 1)))
-                        }
-                        return
-                    } else {
-                        // Count quotes on the current line
-                        val lastNewline = newText.lastIndexOf('\n', cursorIndex - 1)
-                        val lineStart = if (lastNewline == -1) 0 else lastNewline + 1
-                        val nextNewline = newText.indexOf('\n', cursorIndex)
-                        val lineEnd = if (nextNewline == -1) newText.length else nextNewline
-                        val currentLine = newText.substring(lineStart, lineEnd)
-                        val quoteCount = currentLine.count { it == '"' }
-                        
-                        if (quoteCount % 2 != 0) {
-                            // Add pair only if count is odd (spare)
-                            val updatedText = newText.substring(0, cursorIndex) + "\"" + newText.substring(cursorIndex)
-                            _uiState.update {
-                                currentState.copy(textFieldValue = TextFieldValue(updatedText, TextRange(cursorIndex)))
-                            }
-                            return
-                        }
-                    }
-                }
-            }
-        }
-
-        // Detect if a character was deleted (text length decreased by 1)
-        if (newText.length == oldText.length - 1) {
-            val oldCursor = oldValue.selection.start
-            val newCursor = newValue.selection.start
-            
-            // If the deleted character was a quote
-            if (oldCursor > 0 && oldText[oldCursor - 1] == '"') {
-                val charAfterCursor = if (newCursor < newText.length) newText[newCursor] else null
-                if (charAfterCursor == '"') {
-                    // Count quotes on the current line in the new text
-                    val lastNewline = newText.lastIndexOf('\n', newCursor - 1)
-                    val lineStart = if (lastNewline == -1) 0 else lastNewline + 1
-                    val nextNewline = newText.indexOf('\n', newCursor)
-                    val lineEnd = if (nextNewline == -1) newText.length else nextNewline
-                    val currentLine = newText.substring(lineStart, lineEnd)
-                    val quoteCount = currentLine.count { it == '"' }
-                    
-                    if (quoteCount % 2 != 0) {
-                        // Delete the second quote to keep balance
-                        val updatedText = newText.substring(0, newCursor) + newText.substring(newCursor + 1)
-                        _uiState.update {
-                            currentState.copy(textFieldValue = TextFieldValue(updatedText, TextRange(newCursor)))
-                        }
-                        return
-                    }
-                }
-            }
-        }
-
-        _uiState.update { currentState.copy(textFieldValue = newValue) }
+        val edited = JsonEditing.apply(currentState.textFieldValue, newValue)
+        _uiState.value = currentState.copy(
+            textFieldValue = edited,
+            // Any edit clears a stale "not valid JSON" or "save failed" banner.
+            invalidJsonMessage = null,
+            saveFailed = false
+        )
     }
 
-    fun insertCharacter(char: String) {
-        val currentState = _uiState.value
-        if (currentState !is EditJsonState.Success) return
+    fun insertCharacter(text: String) {
+        val currentState = _uiState.value as? EditJsonState.Success ?: return
 
-        val text = currentState.textFieldValue.text
-        val selection = currentState.textFieldValue.selection
-        
-        val newText = text.substring(0, selection.start) + char + text.substring(selection.end)
-        val newSelection = TextRange(selection.start + char.length)
-        
-        // Trigger onValueChange logic for auto-formatting if needed, 
-        // but here we just pass the new TextFieldValue directly
-        // because we might want to insert exactly what's requested by the button.
-        // However, if the user clicks "{", they might expect the auto-formatting too.
-        
-        val textFieldValue = TextFieldValue(newText, newSelection)
-        onValueChange(textFieldValue)
+        val value = currentState.textFieldValue
+        val newText = value.text.substring(0, value.selection.start) + text +
+            value.text.substring(value.selection.end)
+        onValueChange(TextFieldValue(newText, TextRange(value.selection.start + text.length)))
     }
 
-    fun saveFile(newFilePath: String? = null) {
-        val currentState = _uiState.value
-        if (currentState !is EditJsonState.Success) return
+    fun deleteCharacterBeforeCursor() {
+        val currentState = _uiState.value as? EditJsonState.Success ?: return
+
+        val value = currentState.textFieldValue
+        if (value.selection.start == 0 && value.selection.collapsed) return
+
+        val start = if (value.selection.collapsed) value.selection.start - 1 else value.selection.start
+        val newText = value.text.substring(0, start) + value.text.substring(value.selection.end)
+        onValueChange(TextFieldValue(newText, TextRange(start)))
+    }
+
+    /**
+     * Writes the document, validating it first.
+     *
+     * Invalid JSON is reported back through [EditJsonState.Success.invalidJsonMessage] rather than
+     * being written straight over the user's file; [force] is set once the user confirms.
+     */
+    fun saveFile(newFilePath: String? = null, force: Boolean = false) {
+        val currentState = _uiState.value as? EditJsonState.Success ?: return
+        if (currentState.isSaving) return
 
         val pathToSave = newFilePath ?: currentState.filePath
         if (pathToSave.isEmpty()) return
 
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { currentState.copy(isSaving = true) }
-            val success = saveFileContent(pathToSave, currentState.textFieldValue.text)
-            _uiState.update { currentState.copy(isSaving = false, saveSuccess = success) }
+        val content = currentState.textFieldValue.text
+
+        viewModelScope.launch {
+            if (!force) {
+                val problem = withContext(Dispatchers.Default) { validationMessage(content) }
+                if (problem != null) {
+                    _uiState.update { state ->
+                        (state as? EditJsonState.Success)?.copy(invalidJsonMessage = problem) ?: state
+                    }
+                    return@launch
+                }
+            }
+
+            _uiState.update { state ->
+                (state as? EditJsonState.Success)?.copy(
+                    isSaving = true,
+                    invalidJsonMessage = null,
+                    saveFailed = false
+                ) ?: state
+            }
+
+            val success = withContext(Dispatchers.IO) { saveFileContent(pathToSave, content) }
+
+            // Re-read the state instead of reusing the snapshot captured before the write: the user
+            // may have kept typing while the save was in flight, and reusing the old copy would
+            // silently roll their edits back.
+            _uiState.update { state ->
+                (state as? EditJsonState.Success)?.copy(
+                    isSaving = false,
+                    saveFailed = !success,
+                    filePath = if (success) pathToSave else state.filePath,
+                    originalText = if (success) content else state.originalText
+                ) ?: state
+            }
+
+            if (success) _saved.value = true
         }
+    }
+
+    fun dismissInvalidJsonPrompt() {
+        _uiState.update { state ->
+            (state as? EditJsonState.Success)?.copy(invalidJsonMessage = null) ?: state
+        }
+    }
+
+    fun dismissSaveError() {
+        _uiState.update { state ->
+            (state as? EditJsonState.Success)?.copy(saveFailed = false) ?: state
+        }
+    }
+
+    private fun validationMessage(content: String): String? = try {
+        Json.parseToJsonElement(content)
+        null
+    } catch (e: Exception) {
+        e.message?.takeIf { it.isNotBlank() }?.lineSequence()?.first() ?: "Unexpected character"
     }
 }
